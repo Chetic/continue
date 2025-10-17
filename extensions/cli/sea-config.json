@@ -1,0 +1,14 @@
+{
+  "main": "./sea-entry.cjs",
+  "output": "./sea-prep.blob",
+  "useSnapshot": false,
+  "useCodeCache": false,
+  "assets": {
+    "dist/index.js": "./dist/index.js",
+    "dist/index.js.map": "./dist/index.js.map",
+    "dist/cn.js": "./dist/cn.js",
+    "dist/meta.json": "./dist/meta.json",
+    "dist/xhr-sync-worker.js": "./dist/xhr-sync-worker.js",
+    "package.json": "./sea-package.json"
+  }
+}

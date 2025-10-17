@@ -14,3 +14,5 @@ config.yaml
 
 *.expect
 !demo.expect
+continue-cli
+sea-prep.blob
