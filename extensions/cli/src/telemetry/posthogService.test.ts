@@ -111,46 +111,37 @@ describe("PosthogService", () => {
   });
 
   describe("telemetry enabled/disabled", () => {
-    it("should be enabled by default", () => {
+    it("should be disabled by default", () => {
       const service = new PosthogService();
-      expect(service.isEnabled).toBe(true);
+      expect(service.isEnabled).toBe(false);
     });
 
-    it("should be disabled when CONTINUE_ALLOW_ANONYMOUS_TELEMETRY is 0", () => {
-      process.env.CONTINUE_ALLOW_ANONYMOUS_TELEMETRY = "0";
+    it("should remain disabled even when CONTINUE_ALLOW_ANONYMOUS_TELEMETRY is set", () => {
+      process.env.CONTINUE_ALLOW_ANONYMOUS_TELEMETRY = "1";
       const service = new PosthogService();
       expect(service.isEnabled).toBe(false);
     });
   });
 
-  describe("hasInternetConnection and offline client", () => {
+  describe("disabled telemetry behavior", () => {
     let service: PosthogService;
 
     beforeEach(() => {
       service = new PosthogService();
     });
 
-    it("returns false on DNS error, caches and refetches", async () => {
+    it("does not attempt DNS lookup when capturing events", async () => {
       const dns: any = (await import("dns/promises")).default;
-      dns.lookup.mockRejectedValueOnce(new Error("offline"));
-      const first = await (service as any).hasInternetConnection();
-      expect(first).toBe(false);
-      dns.lookup.mockResolvedValueOnce({
-        address: "1.1.1.1",
-        family: 4,
-      } as any);
-      await (service as any).hasInternetConnection();
-      const second = (service as any)._hasInternetConnection;
-      expect(second).toBe(true);
-      expect(dns.lookup).toHaveBeenCalledTimes(2);
+      await service.capture("test_event", { test: "data" });
+      expect(dns.lookup).not.toHaveBeenCalled();
+      expect((service as any)._client).toBeUndefined();
     });
 
-    it("getClient returns undefined when offline", async () => {
+    it("does not attempt shutdown when disabled", async () => {
       const dns: any = (await import("dns/promises")).default;
-      dns.lookup.mockRejectedValueOnce(new Error("offline"));
-      const client = await (service as any).getClient();
-      expect(client).toBeUndefined();
-      expect(dns.lookup).toHaveBeenCalledTimes(1);
+      await service.shutdown();
+      expect(dns.lookup).not.toHaveBeenCalled();
+      expect((service as any)._client).toBeUndefined();
     });
   });
 });
