@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
@@ -8,9 +8,35 @@ import { isAuthenticatedConfig, loadAuthConfig } from "./auth/workos.js";
 import { logger } from "./util/logger.js";
 
 export function getVersion(): string {
+  const envVersion = (
+    process.env.CONTINUE_CLI_VERSION ??
+    process.env.CONTINUE_CLI_RELEASE_VERSION ??
+    ""
+  ).trim();
+
+  if (envVersion) {
+    return envVersion;
+  }
+
   try {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
+    const releaseInfoPath = join(__dirname, "release-info.json");
+
+    if (existsSync(releaseInfoPath)) {
+      try {
+        const releaseInfo = JSON.parse(readFileSync(releaseInfoPath, "utf8"));
+        const releaseVersion = (releaseInfo?.version ?? "").trim();
+        if (releaseVersion) {
+          return releaseVersion;
+        }
+      } catch (error) {
+        logger?.debug?.(
+          `Warning: Failed to read release version from ${releaseInfoPath}: ${error}`,
+        );
+      }
+    }
+
     const packageJsonPath = join(__dirname, "../package.json");
     const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
     return packageJson.version;

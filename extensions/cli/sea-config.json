@@ -9,6 +9,7 @@
     "dist/cn.js": "./dist/cn.js",
     "dist/meta.json": "./dist/meta.json",
     "dist/xhr-sync-worker.js": "./dist/xhr-sync-worker.js",
+    "dist/release-info.json": "./dist/release-info.json",
     "package.json": "./sea-package.json"
   }
 }

@@ -30,7 +30,7 @@
     "typecheck": "tsc --noEmit",
     "watch:logs": "touch ~/.continue/logs/cn.log && tail -f ~/.continue/logs/cn.log",
     "prepare": "npm run build",
-    "build:binary": "npm run build && node --experimental-sea-config sea-config.json && cp \"$(node -p \"process.execPath\")\" continue-cli && npx postject continue-cli NODE_SEA_BLOB sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2 --overwrite && chmod +x continue-cli",
+    "build:binary": "npm run build && node write-release-version.mjs && node --experimental-sea-config sea-config.json && cp \"$(node -p \"process.execPath\")\" continue-cli && npx postject continue-cli NODE_SEA_BLOB sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2 --overwrite && chmod +x continue-cli",
     "semantic-release": "semantic-release",
     "semantic-release:dry-run": "semantic-release --dry-run"
   },
