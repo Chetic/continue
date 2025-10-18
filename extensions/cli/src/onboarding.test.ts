@@ -5,15 +5,20 @@ import * as path from "path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { AuthConfig } from "./auth/workos.js";
-import { initializeWithOnboarding } from "./onboarding.js";
+
+let initializeWithOnboarding: (typeof import("./onboarding.js"))["initializeWithOnboarding"];
 
 describe("onboarding config flag handling", () => {
   let tempDir: string;
   let mockAuthConfig: AuthConfig;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Create a temporary directory for test config files
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "continue-test-"));
+
+    vi.resetModules();
+    process.env.CONTINUE_GLOBAL_DIR = tempDir;
+    ({ initializeWithOnboarding } = await import("./onboarding.js"));
 
     // Create a minimal auth config for testing
     mockAuthConfig = {
@@ -31,6 +36,8 @@ describe("onboarding config flag handling", () => {
     if (fs.existsSync(tempDir)) {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
+    delete process.env.CONTINUE_GLOBAL_DIR;
+    vi.resetModules();
   });
 
   test("should fail loudly when --config points to non-existent file", async () => {
@@ -143,25 +150,17 @@ name: "Incomplete Config"
     }
   });
 
-  test("demonstrates the fix: explicit config failure vs no config provided", async () => {
-    const badConfigPath = path.join(tempDir, "bad.yaml");
-    fs.writeFileSync(badConfigPath, "invalid yaml [");
+  test("should attempt default config path when no --config is provided", async () => {
+    const defaultConfigPath = path.join(tempDir, "config.yaml");
+    const escapeRegex = (value: string) =>
+      value.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
+    const escapedPath = escapeRegex(defaultConfigPath);
 
-    // Case 1: Explicit --config that fails should throw our specific error
     await expect(
-      initializeWithOnboarding(mockAuthConfig, badConfigPath),
-    ).rejects.toThrow(/^Failed to load config from "/);
-
-    // Case 2: No explicit config should follow different logic
-    try {
-      await initializeWithOnboarding(mockAuthConfig, undefined);
-      // If it succeeds, that's fine - the point is it's different behavior
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      // This should NOT have our "Failed to load config from" prefix
-      expect(errorMessage).not.toMatch(/^Failed to load config from "/);
-    }
+      initializeWithOnboarding(mockAuthConfig, undefined),
+    ).rejects.toThrow(
+      new RegExp(`^Failed to load config from "${escapedPath}": `),
+    );
   });
 });
 

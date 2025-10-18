@@ -140,28 +140,30 @@ export async function initializeWithOnboarding(
   configPath: string | undefined,
 ) {
   const firstTime = await isFirstTime();
+  const resolvedConfigPath =
+    configPath ?? (firstTime ? CONFIG_PATH : undefined);
 
-  if (configPath !== undefined) {
+  if (resolvedConfigPath !== undefined) {
     // throw an early error is configPath is invalid or has errors
     try {
       await loadConfiguration(
         authConfig,
-        configPath,
+        resolvedConfigPath,
         getApiClient(authConfig?.accessToken),
         [],
         false,
       );
     } catch (errorMessage) {
       throw new Error(
-        `Failed to load config from "${configPath}": ${errorMessage}`,
+        `Failed to load config from "${resolvedConfigPath}": ${errorMessage}`,
       );
     }
   }
 
   if (!firstTime) return;
 
-  const wasOnboarded = await runOnboardingFlow(configPath);
-  if (wasOnboarded) {
+  const wasOnboarded = await runOnboardingFlow(resolvedConfigPath);
+  if (wasOnboarded || resolvedConfigPath !== undefined) {
     await markOnboardingComplete();
   }
 }

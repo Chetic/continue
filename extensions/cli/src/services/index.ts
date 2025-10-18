@@ -1,5 +1,8 @@
+import * as path from "path";
+
 import { loadAuthConfig } from "../auth/workos.js";
-import { initializeWithOnboarding } from "../onboarding.js";
+import { env } from "../env.js";
+import { initializeWithOnboarding, isFirstTime } from "../onboarding.js";
 import { logger } from "../util/logger.js";
 
 import { AgentFileService } from "./AgentFileService.js";
@@ -51,6 +54,13 @@ export async function initializeServices(initOptions: ServiceInitOptions = {}) {
   logger.debug("Initializing service registry");
 
   const commandOptions = initOptions.options || {};
+
+  if (!initOptions.headless && commandOptions.config === undefined) {
+    const firstTime = await isFirstTime();
+    if (firstTime) {
+      commandOptions.config = path.join(env.continueHome, "config.yaml");
+    }
+  }
   // Handle onboarding for TUI mode (headless: false) unless explicitly skipped
   if (!initOptions.headless && !initOptions.skipOnboarding) {
     const authConfig = loadAuthConfig();

@@ -5,7 +5,8 @@ import { initializeServices, services } from "./index.js";
 
 // Mock the onboarding module
 vi.mock("../onboarding.js", () => ({
-  initializeWithOnboarding: vi.fn().mockResolvedValue({ wasOnboarded: false }),
+  initializeWithOnboarding: vi.fn().mockResolvedValue(undefined),
+  isFirstTime: vi.fn().mockResolvedValue(false),
   createOrUpdateConfig: vi.fn().mockResolvedValue(undefined),
 }));
 
