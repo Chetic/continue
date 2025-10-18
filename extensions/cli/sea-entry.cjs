@@ -11,6 +11,24 @@ async function main() {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "continue-cli-sea-"));
   const distDir = path.join(tempDir, "dist");
   fs.mkdirSync(distDir);
+
+  let cleanedUp = false;
+  const cleanup = () => {
+    if (cleanedUp) {
+      return;
+    }
+    cleanedUp = true;
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch (error) {
+      if (debug) {
+        console.error("[continue-cli:sea] cleanup failed", error);
+      }
+    }
+  };
+
+  process.once("exit", cleanup);
+
   try {
     const files = [
       "index.js",
@@ -39,14 +57,9 @@ async function main() {
     }
     const { runCli } = await import(modulePath);
     await runCli();
-  } finally {
-    try {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    } catch (error) {
-      if (debug) {
-        console.error("[continue-cli:sea] cleanup failed", error);
-      }
-    }
+  } catch (error) {
+    cleanup();
+    throw error;
   }
 }
 
