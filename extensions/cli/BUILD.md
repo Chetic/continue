@@ -49,6 +49,27 @@ The smoke tests verify:
 - Local packages are properly bundled
 - No missing runtime dependencies
 
+## Building a Standalone Binary
+
+The CLI can be packaged into a single executable (x64 Linux, RHEL9 compatible)
+using Node.js' Single Executable Application tooling. Run:
+
+```bash
+npm run build:binary
+```
+
+This command will:
+
+1. Bundle the CLI with `npm run build`.
+2. Generate a SEA preparation blob via `sea-config.json`.
+3. Copy the local Node.js runtime and inject the blob with `postject`.
+4. Produce an executable named `continue-cli` in this directory.
+
+The generated binary embeds the bundled CLI assets and `package.json`, so it can
+run without a Node.js install on the target system. The build uses the Node.js
+version available on the host machine—ensure it meets your deployment
+requirements before distribution.
+
 ## Troubleshooting
 
 ### Common Issues
