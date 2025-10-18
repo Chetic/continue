@@ -66,13 +66,9 @@ class TelemetryService {
   }
 
   private loadConfig(): TelemetryConfig {
-    const hasOtelConfig = !!(
-      process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
-      process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT ||
-      process.env.OTEL_METRICS_EXPORTER
-    );
-    const enabled =
-      process.env.CONTINUE_CLI_ENABLE_TELEMETRY !== "0" && hasOtelConfig;
+    // Telemetry is fully disabled in the CLI to avoid unexpected network calls
+    // and related errors during usage.
+    const enabled = false;
     const sessionId = uuidv4();
 
     return {

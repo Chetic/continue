@@ -40,11 +40,16 @@ export class PosthogService {
   }
 
   get isEnabled() {
-    return process.env.CONTINUE_ALLOW_ANONYMOUS_TELEMETRY !== "0";
+    return false;
   }
 
   private _client: PostHogType | undefined;
   private async getClient() {
+    if (!this.isEnabled) {
+      this._client = undefined;
+      return this._client;
+    }
+
     if (!(await this.hasInternetConnection())) {
       this._client = undefined;
       logger.warn("No internet connection, skipping telemetry");
@@ -81,6 +86,10 @@ export class PosthogService {
   }
 
   async capture(event: string, properties: { [key: string]: any }) {
+    if (!this.isEnabled) {
+      return;
+    }
+
     try {
       const client = await this.getClient();
       if (!client) {
@@ -111,6 +120,10 @@ export class PosthogService {
   }
 
   async shutdown() {
+    if (!this.isEnabled) {
+      return;
+    }
+
     try {
       const client = await this.getClient();
       if (client) {
