@@ -1,0 +1,105 @@
+name: Build Unofficial CLI SEA Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: Additional release notes (optional)
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and publish unofficial CLI binary
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Determine next unofficial version
+        id: version
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prefix = "cli-unofficial-v";
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+            let max = 0;
+            for (const release of releases) {
+              if (!release.tag_name?.startsWith(prefix)) continue;
+              const numeric = Number.parseInt(release.tag_name.slice(prefix.length), 10);
+              if (!Number.isNaN(numeric) && numeric > max) {
+                max = numeric;
+              }
+            }
+            const next = max + 1;
+            core.setOutput("version", String(next));
+            core.setOutput("tag", `${prefix}${next}`);
+            core.setOutput(
+              "release_name",
+              `Unofficial Continue CLI SEA Build v${next} (Not an official Continue release)`,
+            );
+
+      - name: Setup packages
+        uses: ./.github/actions/setup-packages
+
+      - name: Setup core component
+        uses: ./.github/actions/setup-component
+        with:
+          component: core
+          include-root: true
+
+      - name: Build core package
+        run: npm run build
+        working-directory: core
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            extensions/cli/package-lock.json
+
+      - name: Install CLI dependencies
+        run: npm ci --include=optional
+        working-directory: extensions/cli
+
+      - name: Build SEA binary
+        run: npm run build:binary
+        working-directory: extensions/cli
+
+      - name: Create tarball
+        run: |
+          tar -czf continue-cli-unofficial-${{ steps.version.outputs.version }}.tar.gz continue-cli
+        working-directory: extensions/cli
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: continue-cli-unofficial-${{ steps.version.outputs.version }}
+          path: extensions/cli/continue-cli-unofficial-${{ steps.version.outputs.version }}.tar.gz
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.release_name }}
+          body: |
+            This is an automatically generated **unofficial** Continue CLI SEA build.
+
+            Version: v${{ steps.version.outputs.version }}
+
+            These binaries are provided for convenience only and are **not** official Continue releases.
+            ${{ github.event.inputs.notes && format('\nAdditional notes:\n{0}', github.event.inputs.notes) || '' }}
+          prerelease: true
+          draft: false
+          generate_release_notes: false
+          files: extensions/cli/continue-cli-unofficial-${{ steps.version.outputs.version }}.tar.gz
