@@ -5,7 +5,7 @@ import { GlobalContext } from "core/util/GlobalContext.js";
 
 import { logger } from "src/util/logger.js";
 
-import { compareVersions, getLatestVersion, getVersion } from "../version.js";
+import { getVersion } from "../version.js";
 
 import { BaseService } from "./BaseService.js";
 import { serviceContainer } from "./ServiceContainer.js";
@@ -33,88 +33,21 @@ export class UpdateService extends BaseService<UpdateServiceState> {
    * Initialize the update service
    */
   async doInitialize(headless?: boolean) {
-    // Don't automatically check in tests/headless
-    if (!headless && process.env.NODE_ENV !== "test") {
-      void this.checkAndAutoUpdate();
-    }
-
+    void this.checkAndAutoUpdate();
     return this.currentState;
   }
 
   private async checkAndAutoUpdate() {
-    // First get auto update setting from global context
     const globalContext = new GlobalContext();
-    const autoUpdate = globalContext.get("autoUpdateCli") ?? true;
+    globalContext.update("autoUpdateCli", false);
+
     this.setState({
-      autoUpdate,
+      autoUpdate: false,
+      status: UpdateStatus.IDLE,
+      message: `Continue CLI v${this.currentState.currentVersion}`,
+      isUpdateAvailable: false,
+      latestVersion: null,
     });
-
-    try {
-      // Check for updates
-      this.setState({
-        status: UpdateStatus.CHECKING,
-        message: "Checking for updates",
-      });
-
-      const latestVersion = await getLatestVersion();
-      this.setState({
-        latestVersion,
-      });
-
-      if (!latestVersion) {
-        this.setState({
-          status: UpdateStatus.IDLE,
-          message: "Continue CLI",
-          isUpdateAvailable: false,
-        });
-        return;
-      }
-
-      const comparison = compareVersions(
-        this.currentState.currentVersion,
-        latestVersion,
-      );
-      const isUpdateAvailable = comparison === "older";
-      this.setState({
-        isUpdateAvailable,
-      });
-
-      if (this.currentState.currentVersion === "0.0.0-dev") {
-        this.setState({
-          status: UpdateStatus.IDLE,
-          message: `Continue CLI`,
-          isUpdateAvailable,
-          latestVersion,
-        });
-        return; // Uncomment to test auto-update behavior in dev
-      }
-
-      // If update is available, automatically update
-      if (
-        autoUpdate &&
-        isUpdateAvailable &&
-        this.currentState.status !== "updating" &&
-        !process.env.CONTINUE_CLI_AUTO_UPDATED //Already auto updated, preventing sequential auto-update
-      ) {
-        await this.performUpdate(true);
-      } else {
-        this.setState({
-          status: UpdateStatus.IDLE,
-          message: isUpdateAvailable
-            ? `Update available: v${latestVersion}`
-            : `Continue CLI v${this.currentState.currentVersion}`,
-          isUpdateAvailable,
-          latestVersion,
-        });
-      }
-    } catch (error: any) {
-      logger.error("Error checking for updates:", error);
-      this.setState({
-        status: UpdateStatus.ERROR,
-        message: `Continue CLI v${this.currentState.currentVersion}`,
-        error,
-      });
-    }
   }
 
   public async setAutoUpdate(value: boolean) {
