@@ -73,6 +73,8 @@ jobs:
         working-directory: extensions/cli
 
       - name: Build SEA binary
+        env:
+          CONTINUE_CLI_RELEASE_VERSION: 'unofficial-v${{ steps.version.outputs.version }}'
         run: npm run build:binary
         working-directory: extensions/cli
 
