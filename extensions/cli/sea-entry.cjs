@@ -7,6 +7,57 @@ const { getAsset } = require("node:sea");
 
 const debug = Boolean(process.env.CONTINUE_CLI_DEBUG);
 
+const SEA_WARNING_FRAGMENT = "single executable application";
+const SEA_WARNING_TYPE = "ExperimentalWarning";
+
+const originalEmitWarning = process.emitWarning.bind(process);
+
+process.emitWarning = (warning, ...args) => {
+  const shouldSuppress = (() => {
+    if (typeof warning === "string") {
+      const [typeOrOptions] = args;
+      if (typeof typeOrOptions === "string") {
+        return (
+          typeOrOptions === SEA_WARNING_TYPE &&
+          warning.toLowerCase().includes(SEA_WARNING_FRAGMENT)
+        );
+      }
+
+      if (
+        typeOrOptions &&
+        typeof typeOrOptions === "object" &&
+        typeOrOptions.type === SEA_WARNING_TYPE
+      ) {
+        return warning.toLowerCase().includes(SEA_WARNING_FRAGMENT);
+      }
+
+      return false;
+    }
+
+    if (!warning || typeof warning !== "object") {
+      return false;
+    }
+
+    const { name, message } = warning;
+    return (
+      name === SEA_WARNING_TYPE &&
+      typeof message === "string" &&
+      message.toLowerCase().includes(SEA_WARNING_FRAGMENT)
+    );
+  })();
+
+  if (shouldSuppress) {
+    if (debug) {
+      console.error(
+        "[continue-cli:sea] suppressed ExperimentalWarning for SEA runtime"
+      );
+    }
+    return;
+  }
+
+  return originalEmitWarning(warning, ...args);
+};
+
 async function main() {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "continue-cli-sea-"));
   const distDir = path.join(tempDir, "dist");
