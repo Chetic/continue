@@ -8,6 +8,7 @@ const { getAsset } = require("node:sea");
 const debug = Boolean(process.env.CONTINUE_CLI_DEBUG);
 
 const SEA_WARNING_FRAGMENT = "single executable application";
+const SEA_WARNING_STDERR_FRAGMENT = "experimentalwarning: single executable";
 const SEA_WARNING_TYPE = "ExperimentalWarning";
 
 const originalEmitWarning = process.emitWarning.bind(process);
@@ -56,6 +57,49 @@ process.emitWarning = (warning, ...args) => {
   }
 
   return originalEmitWarning(warning, ...args);
+};
+
+const originalStderrWrite = process.stderr.write.bind(process.stderr);
+
+process.stderr.write = (chunk, encoding, callback) => {
+  let resolvedEncoding = encoding;
+  let resolvedCallback = callback;
+
+  if (typeof resolvedEncoding === "function") {
+    resolvedCallback = resolvedEncoding;
+    resolvedEncoding = undefined;
+  }
+
+  let text = "";
+  if (typeof chunk === "string") {
+    text = chunk;
+  } else if (Buffer.isBuffer(chunk)) {
+    const encodingToUse = typeof resolvedEncoding === "string"
+      ? resolvedEncoding
+      : "utf8";
+    text = chunk.toString(encodingToUse);
+  }
+
+  const normalizedText = text.toLowerCase();
+
+  if (
+    normalizedText.includes(SEA_WARNING_FRAGMENT) ||
+    normalizedText.includes(SEA_WARNING_STDERR_FRAGMENT)
+  ) {
+    if (debug) {
+      console.error(
+        "[continue-cli:sea] suppressed ExperimentalWarning stderr output",
+      );
+    }
+
+    if (typeof resolvedCallback === "function") {
+      resolvedCallback();
+    }
+
+    return true;
+  }
+
+  return originalStderrWrite(chunk, encoding, callback);
 };
 
 async function main() {
