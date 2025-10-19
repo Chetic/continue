@@ -5,6 +5,74 @@
 
 import { isHeadlessMode as checkIsHeadlessMode } from "./util/cli.js";
 
+const EXPERIMENTAL_WARNING_TYPE = "ExperimentalWarning" as const;
+const EXPERIMENTAL_WARNING_FRAGMENTS = [
+  "single executable application",
+  "the fetch api is an experimental feature",
+];
+
+const originalEmitWarning = process.emitWarning.bind(
+  process,
+) as typeof process.emitWarning;
+
+const shouldSuppressExperimentalWarning = (
+  warning: unknown,
+  args: unknown[],
+): boolean => {
+  const hasSuppressedFragment = (message: string | undefined): boolean => {
+    if (!message) {
+      return false;
+    }
+    const normalized = message.toLowerCase();
+    return EXPERIMENTAL_WARNING_FRAGMENTS.some((fragment) =>
+      normalized.includes(fragment),
+    );
+  };
+
+  if (typeof warning === "string") {
+    if (!hasSuppressedFragment(warning)) {
+      return false;
+    }
+
+    const [typeOrOptions] = args;
+    if (typeof typeOrOptions === "string") {
+      return typeOrOptions === EXPERIMENTAL_WARNING_TYPE;
+    }
+
+    if (
+      typeOrOptions &&
+      typeof typeOrOptions === "object" &&
+      (typeOrOptions as { type?: string }).type === EXPERIMENTAL_WARNING_TYPE
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
+  if (!warning || typeof warning !== "object") {
+    return false;
+  }
+
+  const warningName = (warning as { name?: string }).name;
+  if (warningName !== EXPERIMENTAL_WARNING_TYPE) {
+    return false;
+  }
+
+  const warningMessage = (warning as { message?: unknown }).message;
+  return (
+    typeof warningMessage === "string" && hasSuppressedFragment(warningMessage)
+  );
+};
+
+process.emitWarning = ((warning: unknown, ...args: unknown[]) => {
+  if (shouldSuppressExperimentalWarning(warning, args)) {
+    return;
+  }
+
+  originalEmitWarning(warning as any, ...(args as any[]));
+}) as typeof process.emitWarning;
+
 // Check if we're in headless mode by looking at process arguments
 // We need to do this before any imports to catch early logging
 const isHeadlessMode = checkIsHeadlessMode();
