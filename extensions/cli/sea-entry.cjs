@@ -86,6 +86,7 @@ async function main() {
       "index.js.map",
       "cn.js",
       "meta.json",
+      "release-info.json",
       "xhr-sync-worker.js"
     ];
     for (const file of files) {
