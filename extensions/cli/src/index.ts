@@ -20,6 +20,7 @@ import { configureConsoleForHeadless, safeStderr } from "./init.js";
 import { sentryService } from "./sentry.js";
 import { addCommonOptions, mergeParentOptions } from "./shared-options.js";
 import { posthogService } from "./telemetry/posthogService.js";
+import { enableHttpLogging } from "./util/httpLogging.js";
 import { gracefulExit } from "./util/exit.js";
 import { logger } from "./util/logger.js";
 import { readStdinSync } from "./util/stdin.js";
@@ -189,6 +190,7 @@ addCommonOptions(program)
 
     if (options.verbose) {
       logger.setLevel("debug");
+      enableHttpLogging();
       const logPath = logger.getLogPath();
       const sessionId = logger.getSessionId();
       // In headless mode, suppress these verbose logs
@@ -331,6 +333,7 @@ program
 
     if (mergedOptions.verbose) {
       logger.setLevel("debug");
+      enableHttpLogging();
       logger.debug("Verbose logging enabled");
     }
 
