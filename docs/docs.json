@@ -23,6 +23,51 @@
             "pages": ["index"]
           },
           {
+            "group": "Hub",
+            "icon": "globe",
+            "pages": [
+              "hub/introduction",
+              {
+                "group": "Configs",
+                "icon": "book",
+                "pages": [
+                  "hub/configs/intro",
+                  "hub/configs/use-a-config",
+                  "hub/configs/create-a-config",
+                  "hub/configs/edit-a-config"
+                ]
+              },
+              {
+                "group": "Governance",
+                "icon": "building",
+                "pages": [
+                  "hub/governance/creating-an-org",
+                  "hub/governance/org-permissions",
+                  "hub/governance/pricing"
+                ]
+              },
+              {
+                "group": "Secrets",
+                "icon": "key",
+                "pages": [
+                  "hub/secrets/secret-types",
+                  "hub/secrets/secret-resolution"
+                ]
+              },
+              {
+                "group": "Agents",
+                "icon": "robot",
+                "pages": [
+                  "hub/agents/intro",
+                  "hub/agents/overview",
+                  "hub/agents/create-and-edit",
+                  "hub/agents/slack-agent"
+                ]
+              },
+              "hub/sharing"
+            ]
+          },
+          {
             "group": "CLI",
             "icon": "terminal",
             "pages": [
@@ -90,6 +135,7 @@
           {
             "group": "Customization",
             "icon": "sliders",
+            "expanded": false,
             "pages": [
               "customization/overview",
               "customization/models",
@@ -102,6 +148,7 @@
           {
             "group": "Help",
             "icon": "book-open",
+            "expanded": false,
             "pages": ["faqs", "troubleshooting", "CONTRIBUTING"]
           }
         ]
@@ -171,7 +218,6 @@
                 "icon": "microscope",
                 "pages": [
                   "customize/deep-dives/configuration",
-                  "customize/deep-dives/slash-commands",
                   "customize/deep-dives/rules",
                   "customize/deep-dives/prompts",
                   "customize/deep-dives/autocomplete",
@@ -182,61 +228,6 @@
                 ]
               },
               "customize/telemetry"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Hub",
-        "groups": [
-          {
-            "group": "Hub",
-            "pages": [
-              "hub/introduction",
-              {
-                "group": "Configs",
-                "icon": "robot",
-                "pages": [
-                  "hub/configs/intro",
-                  "hub/configs/use-a-config",
-                  "hub/configs/create-a-config",
-                  "hub/configs/edit-a-config"
-                ]
-              },
-              {
-                "group": "Blocks",
-                "icon": "cube",
-                "pages": [
-                  "hub/blocks/intro",
-                  "hub/blocks/use-a-block",
-                  "hub/blocks/block-types",
-                  "hub/blocks/create-a-block"
-                ]
-              },
-              {
-                "group": "Governance",
-                "icon": "building",
-                "pages": [
-                  "hub/governance/creating-an-org",
-                  "hub/governance/org-permissions",
-                  "hub/governance/pricing"
-                ]
-              },
-              {
-                "group": "Secrets",
-                "icon": "key",
-                "pages": [
-                  "hub/secrets/secret-types",
-                  "hub/secrets/secret-resolution"
-                ]
-              },
-              {
-                "group": "Workflows",
-                "icon": "cloud",
-                "pages": ["hub/workflows/intro"]
-              },
-              "hub/sharing",
-              "hub/source-control"
             ]
           }
         ]
@@ -261,7 +252,8 @@
               "guides/running-continue-without-internet",
               "guides/custom-code-rag",
               "guides/how-to-self-host-a-model",
-              "guides/notion-continue-guide"
+              "guides/notion-continue-guide",
+              "guides/github-pr-review-bot"
             ]
           },
           {
@@ -271,9 +263,11 @@
               "guides/posthog-github-continuous-ai",
               "guides/continue-docs-mcp-cookbook",
               "guides/github-mcp-continue-cookbook",
+              "guides/atlassian-mcp-continue-cookbook",
               "guides/sanity-mcp-continue-cookbook",
               "guides/sentry-mcp-error-monitoring",
               "guides/snyk-mcp-continue-cookbook",
+              "guides/supabase-mcp-database-workflow",
               "guides/dlt-mcp-continue-cookbook",
               "guides/netlify-mcp-continuous-deployment",
               "guides/chrome-devtools-mcp-performance"
@@ -352,7 +346,8 @@
       "x": "https://twitter.com/continuedev",
       "github": "https://github.com/continuedev/continue",
       "linkedin": "https://linkedin.com/company/continuedev",
-      "discord": "https://discord.gg/vapESyrFmJ"
+      "discord": "https://discord.gg/vapESyrFmJ",
+      "youtube": "https://www.youtube.com/@continuedev"
     }
   },
   "contextual": {
@@ -389,7 +384,27 @@
     },
     {
       "source": "/hub/blocks",
-      "destination": "/hub/blocks/intro"
+      "destination": "/hub/introduction"
+    },
+    {
+      "source": "/hub/blocks/intro",
+      "destination": "/hub/introduction"
+    },
+    {
+      "source": "/hub/blocks/use-a-block",
+      "destination": "/hub/introduction"
+    },
+    {
+      "source": "/hub/blocks/block-types",
+      "destination": "/hub/introduction"
+    },
+    {
+      "source": "/hub/workflows/intro",
+      "destination": "/hub/agents/intro"
+    },
+    {
+      "source": "/hub/blocks/create-a-block",
+      "destination": "/hub/introduction"
     },
     {
       "source": "/customize",
@@ -1061,7 +1076,7 @@
     },
     {
       "source": "/hub/blocks/bundles",
-      "destination": "/hub/blocks/intro"
+      "destination": "/hub/introduction"
     },
     {
       "source": "/customize/settings",
@@ -1230,10 +1245,6 @@
     {
       "source": "/hub/assistants/edit-an-assistant",
       "destination": "/hub/configs/edit-a-config"
-    },
-    {
-      "source": "/hub/agents/intro",
-      "destination": "/hub/configs/intro"
     },
     {
       "source": "/hub/agents/use-an-agent",

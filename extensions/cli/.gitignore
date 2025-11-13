@@ -16,3 +16,4 @@ config.yaml
 !demo.expect
 continue-cli
 sea-prep.blob
+*.cast

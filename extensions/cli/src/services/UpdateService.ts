@@ -48,6 +48,72 @@ export class UpdateService extends BaseService<UpdateServiceState> {
       isUpdateAvailable: false,
       latestVersion: null,
     });
+
+    try {
+      // skip checking for updates in dev
+      if (this.currentState.currentVersion === "0.0.0-dev") {
+        this.setState({
+          status: UpdateStatus.IDLE,
+          message: `Continue CLI`,
+        });
+        return; // Uncomment to test auto-update behavior in dev
+      }
+
+      // Check for updates
+      this.setState({
+        status: UpdateStatus.CHECKING,
+        message: "Checking for updates",
+      });
+
+      const latestVersion = await getLatestVersion();
+      this.setState({
+        latestVersion,
+      });
+
+      if (!latestVersion) {
+        this.setState({
+          status: UpdateStatus.IDLE,
+          message: "Continue CLI",
+          isUpdateAvailable: false,
+        });
+        return;
+      }
+
+      const comparison = compareVersions(
+        this.currentState.currentVersion,
+        latestVersion,
+      );
+      const isUpdateAvailable = comparison === "older";
+      this.setState({
+        isUpdateAvailable,
+      });
+
+      // If update is available, automatically update
+      if (
+        autoUpdate &&
+        isUpdateAvailable &&
+        this.currentState.status !== "updating" &&
+        !process.env.CONTINUE_CLI_AUTO_UPDATED //Already auto updated, preventing sequential auto-update
+      ) {
+        await this.performUpdate(true);
+      } else {
+        this.setState({
+          status: UpdateStatus.IDLE,
+          message: isUpdateAvailable
+            ? `Update available: v${latestVersion}`
+            : `Continue CLI v${this.currentState.currentVersion}`,
+          isUpdateAvailable,
+          latestVersion,
+        });
+      }
+    } catch (error: any) {
+      logger.error("Error checking for updates:", error);
+      this.setState({
+        status: UpdateStatus.ERROR,
+        message: `Continue CLI v${this.currentState.currentVersion}`,
+        error,
+      });
+    }
   }
 
   public async setAutoUpdate(value: boolean) {

@@ -1,5 +1,6 @@
-import { Configuration, DefaultApi } from "@continuedev/sdk/dist/api";
 import { vi } from "vitest";
+
+import { MCPService } from "./MCPService.js";
 
 import { initializeServices, services } from "./index.js";
 
@@ -25,48 +26,6 @@ vi.mock("../configLoader.js", () => ({
 }));
 
 describe("initializeServices", () => {
-  // let mockToolPermissionsService: any;
-
-  beforeEach(() => {
-    // Reset all mocks
-    vi.clearAllMocks();
-
-    // Mock service methods to avoid actual initialization
-    vi.spyOn(services.auth, "initialize").mockResolvedValue({
-      authConfig: {
-        accessToken: "",
-        expiresAt: 123,
-        organizationId: "",
-        refreshToken: "",
-        userEmail: "",
-      },
-      isAuthenticated: false,
-    });
-    vi.spyOn(services.apiClient, "initialize").mockResolvedValue({
-      apiClient: new DefaultApi(
-        new Configuration({
-          basePath: "",
-          accessToken: "",
-        }),
-      ),
-    });
-    vi.spyOn(services.agentFile, "initialize").mockResolvedValue({
-      slug: null,
-      agentFile: null,
-      agentFileModel: null,
-      parsedRules: null,
-      parsedTools: null,
-    });
-    vi.spyOn(services.config, "initialize").mockResolvedValue({
-      config: { name: "test", version: "1.0.0" },
-      configPath: undefined,
-    });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   describe("mode conversion", () => {
     it("should pass only auto flag for auto mode", async () => {
       const spy = vi.spyOn(services.toolPermissions, "initialize");
@@ -94,6 +53,12 @@ describe("initializeServices", () => {
           agentFileModel: null,
           parsedRules: null,
           parsedTools: null,
+        },
+        {
+          connections: [],
+          mcpService: expect.any(MCPService),
+          prompts: [],
+          tools: [],
         },
       );
     });
