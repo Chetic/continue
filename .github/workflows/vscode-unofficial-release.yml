@@ -39,12 +39,49 @@ jobs:
               }
             }
             const next = max + 1;
+            const fs = require("fs");
+            const path = require("path");
+            const workspace = process.env.GITHUB_WORKSPACE ?? ".";
+            const pkgPath = path.join(workspace, "extensions/vscode/package.json");
+            const pkgContents = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+            const baseVersion = String(pkgContents.version ?? "").replace(/-unofficial\.\d+$/, "");
+            const extensionVersion = `${baseVersion}-unofficial.${next}`;
             core.setOutput("version", String(next));
             core.setOutput("tag", `${prefix}${next}`);
             core.setOutput(
               "release_name",
               `Unofficial Continue VSIX Build v${next} (Not an official Continue release)`,
             );
+            core.setOutput("extension_version", extensionVersion);
+
+      - name: Update extension version metadata
+        run: |
+          set -euo pipefail
+          cd extensions/vscode
+          echo "Setting extension version to ${EXT_VERSION}"
+          node <<'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          const version = process.env.EXT_VERSION;
+          if (!version) {
+            throw new Error('Missing EXT_VERSION environment variable');
+          }
+          const pkgPath = path.join(process.cwd(), 'package.json');
+          const lockPath = path.join(process.cwd(), 'package-lock.json');
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+          pkg.version = version;
+          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+          if (fs.existsSync(lockPath)) {
+            const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+            lock.version = version;
+            if (lock.packages && lock.packages['']) {
+              lock.packages[''].version = version;
+            }
+            fs.writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n');
+          }
+          EOF
+        env:
+          EXT_VERSION: ${{ steps.version.outputs.extension_version }}
 
       - name: Clean previous VSIX artifacts
         run: rm -f extensions/vscode/*.vsix
@@ -97,4 +134,3 @@ jobs:
           draft: false
           generate_release_notes: false
           files: ${{ steps.vsix.outputs.vsix_path }}
-
