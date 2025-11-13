@@ -1,5 +1,5 @@
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
-import { ComponentType, useState } from "react";
+import { ComponentType, MouseEvent, useState } from "react";
 
 interface ToggleWithIconProps {
   icon?: ComponentType<React.SVGProps<SVGSVGElement>>;
@@ -21,7 +21,8 @@ export function ToggleWithIcon({
   const [isHovered, setIsHovered] = useState(false);
   const showChevron = isToggleable && (isHovered || open);
 
-  function handleClick() {
+  function handleClick(event: MouseEvent<HTMLDivElement>) {
+    event.stopPropagation();
     if ((isToggleable || isClickable) && onClick) {
       onClick();
     }

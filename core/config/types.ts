@@ -387,6 +387,10 @@ declare global {
     completionOptions: CompletionOptions;
     prompt: string;
     completion: string;
+    interactionId?: string;
+    requestBody?: unknown;
+    responseBody?: unknown;
+    responseChunks?: unknown[];
   }
   
   type MessageModes = "chat" | "edit";

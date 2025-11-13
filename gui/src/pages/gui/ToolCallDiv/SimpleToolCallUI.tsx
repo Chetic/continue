@@ -1,10 +1,14 @@
 import { Tool, ToolCallState } from "core";
 import { ComponentType, useContext, useMemo, useState } from "react";
+import RawApiDataDialog from "../../../components/dialogs/RawApiDataDialog";
 import {
   ContextItemsPeekItem,
   openContextItem,
 } from "../../../components/mainInput/belowMainInput/ContextItemsPeek";
 import { IdeMessengerContext } from "../../../context/IdeMessenger";
+import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
+import { setDialogMessage, setShowDialog } from "../../../redux/slices/uiSlice";
+import { promptLogHasRawApiData } from "../../../util/rawApiData";
 import { ToggleWithIcon } from "./ToggleWithIcon";
 import { ToolCallStatusMessage } from "./ToolCallStatusMessage";
 import { ToolTruncateHistoryIcon } from "./ToolTruncateHistoryIcon";
@@ -24,6 +28,14 @@ export function SimpleToolCallUI({
   historyIndex,
 }: SimpleToolCallUIProps) {
   const ideMessenger = useContext(IdeMessengerContext);
+  const dispatch = useAppDispatch();
+  const promptLogs = useAppSelector(
+    (state) => state.session.history[historyIndex]?.promptLogs,
+  );
+  const promptLog =
+    promptLogs && promptLogs.length > 0
+      ? promptLogs[promptLogs.length - 1]
+      : undefined;
   const shownContextItems = useMemo(() => {
     const contextItems = toolCallStateToContextItems(toolCallState);
     return contextItems.filter((item) => !item.hidden);
@@ -34,14 +46,25 @@ export function SimpleToolCallUI({
   const isToggleable = shownContextItems.length > 1;
   const isSingleItem = shownContextItems.length === 1;
   const shouldShowContent = isToggleable ? open : false;
-  const isClickable = isToggleable || isSingleItem;
+  const isErrored = toolCallState.status === "errored";
+  const rawDataAvailable = promptLogHasRawApiData(promptLog);
+  const isClickable = isErrored || isToggleable || isSingleItem;
 
-  function handleClick() {
+  function handleStatusClick() {
+    if (isErrored) {
+      handleOpenRawData();
+      return;
+    }
     if (isToggleable) {
       setOpen((prev) => !prev);
     } else if (isSingleItem) {
       openContextItem(shownContextItems[0], ideMessenger);
     }
+  }
+
+  function handleOpenRawData() {
+    dispatch(setDialogMessage(<RawApiDataDialog promptLog={promptLog} />));
+    dispatch(setShowDialog(true));
   }
 
   return (
@@ -51,21 +74,38 @@ export function SimpleToolCallUI({
           className={`text-description flex min-w-0 flex-row items-center justify-between gap-1.5 text-xs transition-colors duration-200 ease-in-out ${
             isClickable ? "cursor-pointer hover:brightness-125" : ""
           }`}
-          onClick={isClickable ? handleClick : undefined}
+          onClick={isClickable ? handleStatusClick : undefined}
           data-testid="context-items-peek"
         >
           <ToggleWithIcon
             icon={Icon}
             isToggleable={isToggleable}
             open={shouldShowContent}
+            onClick={() => setOpen((prev) => !prev)}
             isClickable={isSingleItem}
           />
           <ToolCallStatusMessage tool={tool} toolCallState={toolCallState} />
         </div>
 
-        {!!toolCallState.output?.length && (
-          <ToolTruncateHistoryIcon historyIndex={historyIndex} />
-        )}
+        <div className="flex flex-row items-center gap-2">
+          {isErrored && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleOpenRawData();
+              }}
+              className="text-xs font-medium text-[color:var(--vscode-textLink-foreground)] underline decoration-dotted underline-offset-2 hover:text-[color:var(--vscode-textLink-activeForeground)]"
+            >
+              {rawDataAvailable
+                ? "View raw API data"
+                : "View tool call details"}
+            </button>
+          )}
+          {!!toolCallState.output?.length && (
+            <ToolTruncateHistoryIcon historyIndex={historyIndex} />
+          )}
+        </div>
       </div>
 
       {isToggleable && (

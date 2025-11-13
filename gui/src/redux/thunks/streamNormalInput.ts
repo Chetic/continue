@@ -241,6 +241,10 @@ export const streamNormalInput = createAsyncThunk<
         }
       }
     } catch (e) {
+      const promptLogFromError = (e as any)?.promptLog;
+      if (promptLogFromError) {
+        dispatch(addPromptCompletionPair([promptLogFromError]));
+      }
       const toolCallsToCancel = selectCurrentToolCalls(getState());
       posthog.capture("stream_premature_close_error", {
         duration: (Date.now() - start) / 1000,

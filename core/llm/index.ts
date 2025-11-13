@@ -623,6 +623,7 @@ export abstract class BaseLLM implements ILLM {
     }
 
     let completion = "";
+
     try {
       if (this.shouldUseOpenAIAdapter("streamFim") && this.openaiAdapter) {
         const stream = this.openaiAdapter.fimStream(
@@ -722,6 +723,10 @@ export abstract class BaseLLM implements ILLM {
     const interaction = logEnabled
       ? this.logger?.createInteractionLog()
       : undefined;
+    const interactionId =
+      interaction && "interactionId" in interaction
+        ? (interaction as unknown as { interactionId?: string }).interactionId
+        : undefined;
     let status: InteractionStatus = "in_progress";
 
     let prompt = pruneRawPromptFromTop(
@@ -842,6 +847,7 @@ export abstract class BaseLLM implements ILLM {
       prompt,
       completion,
       completionOptions,
+      interactionId,
     };
   }
 
@@ -1045,12 +1051,16 @@ export abstract class BaseLLM implements ILLM {
     body: ChatCompletionCreateParams,
     signal: AbortSignal,
     onCitations: (c: string[]) => void,
+    onRawChunk?: (chunk: unknown) => void,
   ): AsyncGenerator<ChatMessage> {
     const stream = this.openaiAdapter!.chatCompletionStream(
       { ...body, stream: true },
       signal,
     );
     for await (const chunk of stream) {
+      if (onRawChunk) {
+        onRawChunk(chunk);
+      }
       if (!this.lastRequestId && typeof (chunk as any).id === "string") {
         this.lastRequestId = (chunk as any).id;
       }
@@ -1067,11 +1077,15 @@ export abstract class BaseLLM implements ILLM {
   private async *openAIAdapterNonStream(
     body: ChatCompletionCreateParams,
     signal: AbortSignal,
+    onRawResponse?: (response: unknown) => void,
   ): AsyncGenerator<ChatMessage> {
     const response = await this.openaiAdapter!.chatCompletionNonStream(
       { ...body, stream: false },
       signal,
     );
+    if (onRawResponse) {
+      onRawResponse(response);
+    }
     this.lastRequestId = response.id ?? this.lastRequestId;
     const messages = fromChatResponse(response as any);
     for (const msg of messages) {
@@ -1162,6 +1176,26 @@ export abstract class BaseLLM implements ILLM {
     const completion: string[] = [];
     let usage: Usage | undefined = undefined;
     let citations: null | string[] = null;
+    let requestBody: unknown;
+    let responseBody: unknown;
+    let responseChunks: unknown[] | undefined;
+
+    const interactionId =
+      interaction && "interactionId" in interaction
+        ? (interaction as unknown as { interactionId?: string }).interactionId
+        : undefined;
+
+    const createPromptLog = (completionText: string): PromptLog => ({
+      modelTitle: this.title ?? completionOptions.model,
+      modelProvider: this.underlyingProviderName,
+      completionOptions,
+      prompt,
+      completion: completionText,
+      interactionId,
+      requestBody,
+      responseBody,
+      responseChunks,
+    });
 
     try {
       if (this.templateMessages) {
@@ -1184,6 +1218,7 @@ export abstract class BaseLLM implements ILLM {
             includeReasoningDetailsField: this.supportsReasoningDetailsField,
           });
           body = this.modifyChatBody(body);
+          requestBody = body;
 
           if (logEnabled) {
             interaction?.logItem({
@@ -1208,14 +1243,29 @@ export abstract class BaseLLM implements ILLM {
             iterable = useStream
               ? this.responsesStream(messages, signal, completionOptions)
               : this.responsesNonStream(messages, signal, completionOptions);
+          } else if (useStream) {
+            const rawChunks: unknown[] = [];
+            iterable = this.openAIAdapterStream(
+              body,
+              signal,
+              (c) => {
+                if (!citations) {
+                  citations = c;
+                }
+              },
+              (chunk) => {
+                rawChunks.push(chunk);
+              },
+            );
+            responseChunks = rawChunks;
           } else {
-            iterable = useStream
-              ? this.openAIAdapterStream(body, signal, (c) => {
-                  if (!citations) {
-                    citations = c;
-                  }
-                })
-              : this.openAIAdapterNonStream(body, signal);
+            iterable = this.openAIAdapterNonStream(
+              body,
+              signal,
+              (rawResponse) => {
+                responseBody = rawResponse;
+              },
+            );
           }
 
           for await (const chunk of iterable) {
@@ -1276,6 +1326,7 @@ export abstract class BaseLLM implements ILLM {
         usage,
       );
     } catch (e) {
+      (e as any).promptLog = createPromptLog(completion.join(""));
       // Capture chat streaming failures to Sentry
       Logger.error(e as Error, {
         context: "llm_stream_chat",
@@ -1319,12 +1370,7 @@ export abstract class BaseLLM implements ILLM {
   requests when not using tools, so it's the simplest option to always add to history.
   */
 
-    return {
-      modelTitle: this.title ?? completionOptions.model,
-      modelProvider: this.underlyingProviderName,
-      prompt,
-      completion: completion.join(""),
-    };
+    return createPromptLog(completion.join(""));
   }
 
   getBatchedChunks(chunks: string[]): string[][] {

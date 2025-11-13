@@ -472,8 +472,13 @@ export type FileSymbolMap = Record<string, SymbolWithRange[]>;
 export interface PromptLog {
   modelTitle: string;
   modelProvider: string;
+  completionOptions: CompletionOptions;
   prompt: string;
   completion: string;
+  interactionId?: string;
+  requestBody?: unknown;
+  responseBody?: unknown;
+  responseChunks?: unknown[];
 }
 
 export type MessageModes = "chat" | "agent" | "plan" | "background";

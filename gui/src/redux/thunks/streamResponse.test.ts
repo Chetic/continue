@@ -53,6 +53,8 @@ const mockGetBaseSystemMessage = vi.mocked(getBaseSystemMessage);
 const mockPosthog = vi.mocked(posthog);
 const mockResolveEditorContent = vi.mocked(resolveEditorContent);
 
+const MOCK_COMPLETION_OPTIONS = { model: "claude-sonnet" };
+
 const mockClaudeModel: ModelDescription = {
   title: "Claude 3.5 Sonnet",
   model: "claude-3-5-sonnet-20241022",
@@ -142,6 +144,7 @@ describe("streamResponseThunk", () => {
         completion: "Hi there!",
         modelProvider: "anthropic",
         modelTitle: "Claude 3.5 Sonnet",
+        completionOptions: { model: "claude-sonnet" },
       };
     }
 
@@ -269,12 +272,12 @@ describe("streamResponseThunk", () => {
       {
         type: "session/addPromptCompletionPair",
         payload: [
-          {
+          expect.objectContaining({
             prompt: "Hello",
             completion: "Hi there!",
             modelProvider: "anthropic",
             modelTitle: "Claude 3.5 Sonnet",
-          },
+          }),
         ],
       },
       {
@@ -463,12 +466,12 @@ describe("streamResponseThunk", () => {
               role: "assistant",
             },
             promptLogs: [
-              {
+              expect.objectContaining({
                 completion: "Hi there!",
                 modelProvider: "anthropic",
                 prompt: "Hello",
                 modelTitle: "Claude 3.5 Sonnet",
-              },
+              }),
             ],
           },
         ],
@@ -555,6 +558,7 @@ describe("streamResponseThunk", () => {
         completion: "I'll search the codebase for you.",
         modelProvider: "anthropic",
         modelTitle: "Claude 3.5 Sonnet",
+        completionOptions: MOCK_COMPLETION_OPTIONS,
       };
     }
 
@@ -577,6 +581,7 @@ describe("streamResponseThunk", () => {
             completion: "Search completed.",
             modelProvider: "anthropic",
             modelTitle: "Claude 3.5 Sonnet",
+            completionOptions: MOCK_COMPLETION_OPTIONS,
           };
         }
         return simpleGenerator();
@@ -812,12 +817,12 @@ describe("streamResponseThunk", () => {
               ],
             },
             promptLogs: [
-              {
+              expect.objectContaining({
                 completion: "I'll search the codebase for you.",
                 modelProvider: "anthropic",
                 modelTitle: "Claude 3.5 Sonnet",
                 prompt: "Please search the codebase",
-              },
+              }),
             ],
             toolCallStates: [
               {
@@ -863,12 +868,12 @@ describe("streamResponseThunk", () => {
               role: "assistant",
             },
             promptLogs: [
-              {
+              expect.objectContaining({
                 completion: "Search completed.",
                 modelProvider: "anthropic",
                 modelTitle: "Claude 3.5 Sonnet",
                 prompt: "continuing after tool",
-              },
+              }),
             ],
           },
         ],
@@ -930,6 +935,7 @@ describe("streamResponseThunk", () => {
         completion: "Complete response",
         modelProvider: "anthropic",
         modelTitle: "claude",
+        completionOptions: MOCK_COMPLETION_OPTIONS,
       };
     }
 

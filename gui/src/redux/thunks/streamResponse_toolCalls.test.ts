@@ -53,6 +53,8 @@ const mockGetBaseSystemMessage = vi.mocked(getBaseSystemMessage);
 const mockPosthog = vi.mocked(posthog);
 const mockResolveEditorContent = vi.mocked(resolveEditorContent);
 
+const MOCK_COMPLETION_OPTIONS = { model: "claude-sonnet" };
+
 const mockClaudeModel: ModelDescription = {
   title: "Claude 3.5 Sonnet",
   model: "claude-3-5-sonnet-20241022",
@@ -164,6 +166,7 @@ describe("streamResponseThunk - tool calls", () => {
         completion: "I'll search the codebase for you.",
         modelProvider: "anthropic",
         modelTitle: "Claude 3.5 Sonnet",
+        completionOptions: MOCK_COMPLETION_OPTIONS,
       };
     }
 
@@ -186,6 +189,7 @@ describe("streamResponseThunk - tool calls", () => {
             completion: "Search completed.",
             modelProvider: "anthropic",
             modelTitle: "Claude 3.5 Sonnet",
+            completionOptions: MOCK_COMPLETION_OPTIONS,
           };
         }
         return simpleGenerator();
@@ -506,12 +510,12 @@ describe("streamResponseThunk - tool calls", () => {
               ],
             },
             promptLogs: [
-              {
+              expect.objectContaining({
                 completion: "I'll search the codebase for you.",
                 modelProvider: "anthropic",
                 modelTitle: "Claude 3.5 Sonnet",
                 prompt: "Please search the codebase",
-              },
+              }),
             ],
             toolCallStates: [
               {
@@ -557,12 +561,12 @@ describe("streamResponseThunk - tool calls", () => {
               role: "assistant",
             },
             promptLogs: [
-              {
+              expect.objectContaining({
                 completion: "Search completed.",
                 modelProvider: "anthropic",
                 modelTitle: "Claude 3.5 Sonnet",
                 prompt: "continuing after tool",
-              },
+              }),
             ],
           },
         ],
@@ -636,6 +640,7 @@ describe("streamResponseThunk - tool calls", () => {
         completion: "I'll search the codebase for you.",
         modelProvider: "anthropic",
         modelTitle: "Claude 3.5 Sonnet",
+        completionOptions: MOCK_COMPLETION_OPTIONS,
       };
     }
 
@@ -1042,12 +1047,12 @@ describe("streamResponseThunk - tool calls", () => {
               ],
             },
             promptLogs: [
-              {
+              expect.objectContaining({
                 completion: "I'll search the codebase for you.",
                 modelProvider: "anthropic",
                 modelTitle: "Claude 3.5 Sonnet",
                 prompt: "Please search the codebase",
-              },
+              }),
             ],
             toolCallStates: [
               {
@@ -1161,6 +1166,7 @@ describe("streamResponseThunk - tool calls", () => {
         completion: "I'll search for test functions in the codebase.",
         modelProvider: "anthropic",
         modelTitle: "Claude 3.5 Sonnet",
+        completionOptions: MOCK_COMPLETION_OPTIONS,
       };
     }
 
@@ -1190,6 +1196,7 @@ describe("streamResponseThunk - tool calls", () => {
               "I found several test functions in your codebase. Here are the main ones I discovered...",
             modelProvider: "anthropic",
             modelTitle: "Claude 3.5 Sonnet",
+            completionOptions: MOCK_COMPLETION_OPTIONS,
           };
         }
         return followupGenerator();
@@ -1849,12 +1856,12 @@ describe("streamResponseThunk - tool calls", () => {
               ],
             },
             promptLogs: [
-              {
+              expect.objectContaining({
                 completion: "I'll search for test functions in the codebase.",
                 modelProvider: "anthropic",
                 modelTitle: "Claude 3.5 Sonnet",
                 prompt: "Please search the codebase for test functions",
-              },
+              }),
             ],
             toolCallStates: [
               {
@@ -1903,13 +1910,13 @@ describe("streamResponseThunk - tool calls", () => {
               role: "assistant",
             },
             promptLogs: [
-              {
+              expect.objectContaining({
                 completion:
                   "I found several test functions in your codebase. Here are the main ones I discovered...",
                 modelProvider: "anthropic",
                 modelTitle: "Claude 3.5 Sonnet",
                 prompt: "continuing after tool execution",
-              },
+              }),
             ],
           },
         ],
@@ -1990,6 +1997,7 @@ describe("streamResponseThunk - tool calls", () => {
           completion: "I'll run the echo command.",
           modelProvider: "anthropic",
           modelTitle: "Claude 3.5 Sonnet",
+          completionOptions: MOCK_COMPLETION_OPTIONS,
         };
       }
 
@@ -2090,6 +2098,7 @@ describe("streamResponseThunk - tool calls", () => {
           completion: "I'll list the files.",
           modelProvider: "anthropic",
           modelTitle: "Claude 3.5 Sonnet",
+          completionOptions: MOCK_COMPLETION_OPTIONS,
         };
       }
 
@@ -2211,6 +2220,7 @@ describe("streamResponseThunk - tool calls", () => {
           completion: "I'll help you.",
           modelProvider: "anthropic",
           modelTitle: "Claude 3.5 Sonnet",
+          completionOptions: MOCK_COMPLETION_OPTIONS,
         };
       }
 
@@ -2310,6 +2320,7 @@ describe("streamResponseThunk - tool calls", () => {
           completion: "I'll run the eval command for you.",
           modelProvider: "anthropic",
           modelTitle: "Claude 3.5 Sonnet",
+          completionOptions: MOCK_COMPLETION_OPTIONS,
         };
       }
 
