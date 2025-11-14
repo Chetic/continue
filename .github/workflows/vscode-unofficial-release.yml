@@ -11,16 +11,21 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
-    name: Build and publish unofficial VSIX
+  version-info:
+    name: Determine version metadata
     runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.propagate.outputs.version }}
+      tag: ${{ steps.propagate.outputs.tag }}
+      release_name: ${{ steps.propagate.outputs.release_name }}
+      extension_version: ${{ steps.propagate.outputs.extension_version }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
       - name: Determine next unofficial version
-        id: version
+        id: determine
         uses: actions/github-script@v7
         with:
           script: |
@@ -53,6 +58,34 @@ jobs:
               `Unofficial Continue VSIX Build v${next} (Not an official Continue release)`,
             );
             core.setOutput("extension_version", extensionVersion);
+            core.exportVariable("VERSION", String(next));
+            core.exportVariable("TAG", `${prefix}${next}`);
+            core.exportVariable(
+              "RELEASE_NAME",
+              `Unofficial Continue VSIX Build v${next} (Not an official Continue release)`,
+            );
+            core.exportVariable("EXTENSION_VERSION", extensionVersion);
+
+      - name: Propagate version metadata
+        id: propagate
+        run: |
+          {
+            echo "version=${VERSION}";
+            echo "tag=${TAG}";
+            echo "release_name=${RELEASE_NAME}";
+            echo "extension_version=${EXT_VERSION}";
+          } >> "$GITHUB_OUTPUT"
+
+  build-linux:
+    name: Build Linux VSIX
+    runs-on: ubuntu-22.04
+    needs: version-info
+    outputs:
+      artifact_name: ${{ steps.artifact-metadata.outputs.name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
       - name: Update extension version metadata
         run: |
@@ -81,7 +114,7 @@ jobs:
           }
           EOF
         env:
-          EXT_VERSION: ${{ steps.version.outputs.extension_version }}
+          EXT_VERSION: ${{ needs.version-info.outputs.extension_version }}
 
       - name: Clean previous VSIX artifacts
         run: rm -f extensions/vscode/*.vsix
@@ -108,11 +141,61 @@ jobs:
             exit 1
           fi
           VSIX="${files[0]}"
-          TARGET="extensions/vscode/unofficial/continue-vscode-unofficial-linux-${{ steps.version.outputs.version }}.vsix"
+          TARGET="extensions/vscode/unofficial/continue-vscode-unofficial-linux-${{ needs.version-info.outputs.version }}.vsix"
           mv "$VSIX" "$TARGET"
           echo "vsix_path=$TARGET" >> $GITHUB_OUTPUT
 
-      - name: Clean VSIX artifacts before macOS build
+      - name: Set artifact metadata
+        id: artifact-metadata
+        run: echo "name=continue-vscode-unofficial-linux-${{ needs.version-info.outputs.version }}" >> $GITHUB_OUTPUT
+
+      - name: Upload Linux VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact-metadata.outputs.name }}
+          path: ${{ steps.linux-vsix.outputs.vsix_path }}
+
+  build-macos:
+    name: Build macOS VSIX
+    runs-on: macos-13
+    needs: version-info
+    outputs:
+      artifact_name: ${{ steps.artifact-metadata.outputs.name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Update extension version metadata
+        run: |
+          set -euo pipefail
+          cd extensions/vscode
+          echo "Setting extension version to ${EXT_VERSION}"
+          node <<'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          const version = process.env.EXT_VERSION;
+          if (!version) {
+            throw new Error('Missing EXT_VERSION environment variable');
+          }
+          const pkgPath = path.join(process.cwd(), 'package.json');
+          const lockPath = path.join(process.cwd(), 'package-lock.json');
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+          pkg.version = version;
+          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+          if (fs.existsSync(lockPath)) {
+            const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+            lock.version = version;
+            if (lock.packages && lock.packages['']) {
+              lock.packages[''].version = version;
+            }
+            fs.writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n');
+          }
+          EOF
+        env:
+          EXT_VERSION: ${{ needs.version-info.outputs.extension_version }}
+
+      - name: Clean previous VSIX artifacts
         run: rm -f extensions/vscode/*.vsix
 
       - name: Build VS Code extension (macOS x64)
@@ -122,7 +205,7 @@ jobs:
           arch: x64
           npm_config_arch: x64
           pre-release: false
-          commit-sha: ${{ github.sha }}
+          commit-sha: ""
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Prepare macOS VSIX artifact
@@ -137,31 +220,74 @@ jobs:
             exit 1
           fi
           VSIX="${files[0]}"
-          TARGET="extensions/vscode/unofficial/continue-vscode-unofficial-macos-${{ steps.version.outputs.version }}.vsix"
+          TARGET="extensions/vscode/unofficial/continue-vscode-unofficial-macos-${{ needs.version-info.outputs.version }}.vsix"
           mv "$VSIX" "$TARGET"
           echo "vsix_path=$TARGET" >> $GITHUB_OUTPUT
 
-      - name: Upload Linux VSIX artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: continue-vscode-unofficial-linux-${{ steps.version.outputs.version }}
-          path: ${{ steps.linux-vsix.outputs.vsix_path }}
+      - name: Set artifact metadata
+        id: artifact-metadata
+        run: echo "name=continue-vscode-unofficial-macos-${{ needs.version-info.outputs.version }}" >> $GITHUB_OUTPUT
 
       - name: Upload macOS VSIX artifact
         uses: actions/upload-artifact@v4
         with:
-          name: continue-vscode-unofficial-macos-${{ steps.version.outputs.version }}
+          name: ${{ steps.artifact-metadata.outputs.name }}
           path: ${{ steps.mac-vsix.outputs.vsix_path }}
+
+  publish-release:
+    name: Publish release
+    runs-on: ubuntu-22.04
+    needs:
+      - version-info
+      - build-linux
+      - build-macos
+
+    steps:
+      - name: Download Linux VSIX artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-linux.outputs.artifact_name }}
+          path: dist/linux
+
+      - name: Register Linux VSIX path
+        id: linux-path
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(dist/linux/*.vsix)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "Linux VSIX not found" >&2
+            exit 1
+          fi
+          echo "path=${files[0]}" >> $GITHUB_OUTPUT
+
+      - name: Download macOS VSIX artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-macos.outputs.artifact_name }}
+          path: dist/macos
+
+      - name: Register macOS VSIX path
+        id: mac-path
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(dist/macos/*.vsix)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "macOS VSIX not found" >&2
+            exit 1
+          fi
+          echo "path=${files[0]}" >> $GITHUB_OUTPUT
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.release_name }}
+          tag_name: ${{ needs.version-info.outputs.tag }}
+          name: ${{ needs.version-info.outputs.release_name }}
           body: |
             This is an automatically generated **unofficial** Continue VSIX build for Linux x64 and macOS x64.
 
-            Version: v${{ steps.version.outputs.version }}
+            Version: v${{ needs.version-info.outputs.version }}
 
             These builds are provided for convenience only and are **not** official Continue releases.
             ${{ github.event.inputs.notes && format('\nAdditional notes:\n{0}', github.event.inputs.notes) || '' }}
@@ -169,5 +295,5 @@ jobs:
           draft: false
           generate_release_notes: false
           files: |
-            ${{ steps.linux-vsix.outputs.vsix_path }}
-            ${{ steps.mac-vsix.outputs.vsix_path }}
+            ${{ steps.linux-path.outputs.path }}
+            ${{ steps.mac-path.outputs.path }}
