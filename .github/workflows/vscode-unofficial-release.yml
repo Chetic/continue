@@ -155,85 +155,6 @@ jobs:
           name: ${{ steps.artifact-metadata.outputs.name }}
           path: ${{ steps.linux-vsix.outputs.vsix_path }}
 
-  build-macos-x64:
-    name: Build macOS x64 VSIX
-    runs-on: macos-15-intel
-    needs: version-info
-    outputs:
-      artifact_name: ${{ steps.artifact-metadata.outputs.name }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Update extension version metadata
-        run: |
-          set -euo pipefail
-          cd extensions/vscode
-          echo "Setting extension version to ${EXT_VERSION}"
-          node <<'EOF'
-          const fs = require('fs');
-          const path = require('path');
-          const version = process.env.EXT_VERSION;
-          if (!version) {
-            throw new Error('Missing EXT_VERSION environment variable');
-          }
-          const pkgPath = path.join(process.cwd(), 'package.json');
-          const lockPath = path.join(process.cwd(), 'package-lock.json');
-          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-          pkg.version = version;
-          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-          if (fs.existsSync(lockPath)) {
-            const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
-            lock.version = version;
-            if (lock.packages && lock.packages['']) {
-              lock.packages[''].version = version;
-            }
-            fs.writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n');
-          }
-          EOF
-        env:
-          EXT_VERSION: ${{ needs.version-info.outputs.extension_version }}
-
-      - name: Clean previous VSIX artifacts
-        run: rm -f extensions/vscode/*.vsix
-
-      - name: Build VS Code extension (macOS x64)
-        uses: ./.github/actions/build-vscode-extension
-        with:
-          platform: darwin
-          arch: x64
-          npm_config_arch: x64
-          pre-release: false
-          commit-sha: ""
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Prepare macOS VSIX artifact
-        id: mac-vsix
-        run: |
-          set -euo pipefail
-          mkdir -p extensions/vscode/unofficial
-          shopt -s nullglob
-          files=(extensions/vscode/*.vsix)
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "No VSIX file was generated." >&2
-            exit 1
-          fi
-          VSIX="${files[0]}"
-          TARGET="extensions/vscode/unofficial/continue-vscode-unofficial-macos-x64-${{ needs.version-info.outputs.version }}.vsix"
-          mv "$VSIX" "$TARGET"
-          echo "vsix_path=$TARGET" >> $GITHUB_OUTPUT
-
-      - name: Set artifact metadata
-        id: artifact-metadata
-        run: echo "name=continue-vscode-unofficial-macos-x64-${{ needs.version-info.outputs.version }}" >> $GITHUB_OUTPUT
-
-      - name: Upload macOS VSIX artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.artifact-metadata.outputs.name }}
-          path: ${{ steps.mac-vsix.outputs.vsix_path }}
-
   build-macos-arm64:
     name: Build macOS arm64 VSIX
     runs-on: macos-latest
@@ -319,7 +240,6 @@ jobs:
     needs:
       - version-info
       - build-linux
-      - build-macos-x64
       - build-macos-arm64
 
     steps:
@@ -337,24 +257,6 @@ jobs:
           files=(dist/linux/*.vsix)
           if [ ${#files[@]} -eq 0 ]; then
             echo "Linux VSIX not found" >&2
-            exit 1
-          fi
-          echo "path=${files[0]}" >> $GITHUB_OUTPUT
-
-      - name: Download macOS x64 VSIX artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.build-macos-x64.outputs.artifact_name }}
-          path: dist/macos-x64
-
-      - name: Register macOS x64 VSIX path
-        id: mac-x64-path
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          files=(dist/macos-x64/*.vsix)
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "macOS x64 VSIX not found" >&2
             exit 1
           fi
           echo "path=${files[0]}" >> $GITHUB_OUTPUT
@@ -383,7 +285,7 @@ jobs:
           tag_name: ${{ needs.version-info.outputs.tag }}
           name: ${{ needs.version-info.outputs.release_name }}
           body: |
-            This is an automatically generated **unofficial** Continue VSIX build for Linux x64, macOS x64, and macOS arm64.
+            This is an automatically generated **unofficial** Continue VSIX build for Linux x64 and macOS arm64.
 
             Version: v${{ needs.version-info.outputs.version }}
 
@@ -394,5 +296,4 @@ jobs:
           generate_release_notes: false
           files: |
             ${{ steps.linux-path.outputs.path }}
-            ${{ steps.mac-x64-path.outputs.path }}
             ${{ steps.mac-arm64-path.outputs.path }}
