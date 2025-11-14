@@ -73,7 +73,7 @@ jobs:
             echo "version=${VERSION}";
             echo "tag=${TAG}";
             echo "release_name=${RELEASE_NAME}";
-            echo "extension_version=${EXT_VERSION}";
+            echo "extension_version=${EXTENSION_VERSION}";
           } >> "$GITHUB_OUTPUT"
 
   build-linux:
@@ -157,7 +157,7 @@ jobs:
 
   build-macos:
     name: Build macOS VSIX
-    runs-on: macos-13
+    runs-on: macos-15-intel
     needs: version-info
     outputs:
       artifact_name: ${{ steps.artifact-metadata.outputs.name }}
