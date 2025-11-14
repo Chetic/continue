@@ -55,14 +55,16 @@ console.log("[info] Using target: ", target);
 
 const exe = os === "win32" ? ".exe" : "";
 
-const isArmTarget =
-  target === "darwin-arm64" ||
-  target === "linux-arm64" ||
-  target === "win32-arm64";
-
 const isWinTarget = target?.startsWith("win");
 const isLinuxTarget = target?.startsWith("linux");
 const isMacTarget = target?.startsWith("darwin");
+const TARGET_LANCEDB_PACKAGES = {
+  "darwin-arm64": "@lancedb/vectordb-darwin-arm64",
+  "darwin-x64": "@lancedb/vectordb-darwin-x64",
+  "linux-arm64": "@lancedb/vectordb-linux-arm64-gnu",
+  "win32-arm64": "@lancedb/vectordb-win32-arm64-msvc",
+};
+const needsPrebuiltBinaries = Boolean(TARGET_LANCEDB_PACKAGES[target]);
 
 void (async () => {
   const startTime = Date.now();
@@ -288,25 +290,16 @@ void (async () => {
     );
   });
 
-  if (!skipInstalls) {
-    // GitHub Actions doesn't support ARM, so we need to download pre-saved binaries
-    // 02/07/25 - the above comment is out of date, there is now support for ARM runners on GitHub Actions
-    if (isArmTarget) {
-      // lancedb binary
-      const packageToInstall = {
-        "darwin-arm64": "@lancedb/vectordb-darwin-arm64",
-        "linux-arm64": "@lancedb/vectordb-linux-arm64-gnu",
-        "win32-arm64": "@lancedb/vectordb-win32-arm64-msvc",
-      }[target];
-      console.log(
-        "[info] Downloading pre-built lancedb binary: " + packageToInstall,
-      );
+  if (!skipInstalls && needsPrebuiltBinaries) {
+    const packageToInstall = TARGET_LANCEDB_PACKAGES[target];
+    console.log(
+      "[info] Downloading pre-built lancedb binary: " + packageToInstall,
+    );
 
-      await Promise.all([
-        copySqlite(target),
-        installAndCopyNodeModules(packageToInstall, "@lancedb"),
-      ]);
-    }
+    await Promise.all([
+      copySqlite(target),
+      installAndCopyNodeModules(packageToInstall, "@lancedb"),
+    ]);
   }
 
   console.log("[info] Copying sqlite node binding from core");
