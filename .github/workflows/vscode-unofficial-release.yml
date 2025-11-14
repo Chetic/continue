@@ -96,8 +96,8 @@ jobs:
           commit-sha: ${{ github.sha }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Prepare VSIX artifact
-        id: vsix
+      - name: Prepare Linux VSIX artifact
+        id: linux-vsix
         run: |
           set -euo pipefail
           mkdir -p extensions/vscode/unofficial
@@ -108,15 +108,50 @@ jobs:
             exit 1
           fi
           VSIX="${files[0]}"
-          TARGET="extensions/vscode/unofficial/continue-vscode-unofficial-${{ steps.version.outputs.version }}.vsix"
-          cp "$VSIX" "$TARGET"
+          TARGET="extensions/vscode/unofficial/continue-vscode-unofficial-linux-${{ steps.version.outputs.version }}.vsix"
+          mv "$VSIX" "$TARGET"
           echo "vsix_path=$TARGET" >> $GITHUB_OUTPUT
 
-      - name: Upload VSIX artifact
+      - name: Clean VSIX artifacts before macOS build
+        run: rm -f extensions/vscode/*.vsix
+
+      - name: Build VS Code extension (macOS x64)
+        uses: ./.github/actions/build-vscode-extension
+        with:
+          platform: darwin
+          arch: x64
+          npm_config_arch: x64
+          pre-release: false
+          commit-sha: ${{ github.sha }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare macOS VSIX artifact
+        id: mac-vsix
+        run: |
+          set -euo pipefail
+          mkdir -p extensions/vscode/unofficial
+          shopt -s nullglob
+          files=(extensions/vscode/*.vsix)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No VSIX file was generated." >&2
+            exit 1
+          fi
+          VSIX="${files[0]}"
+          TARGET="extensions/vscode/unofficial/continue-vscode-unofficial-macos-${{ steps.version.outputs.version }}.vsix"
+          mv "$VSIX" "$TARGET"
+          echo "vsix_path=$TARGET" >> $GITHUB_OUTPUT
+
+      - name: Upload Linux VSIX artifact
         uses: actions/upload-artifact@v4
         with:
-          name: continue-vscode-unofficial-${{ steps.version.outputs.version }}
-          path: ${{ steps.vsix.outputs.vsix_path }}
+          name: continue-vscode-unofficial-linux-${{ steps.version.outputs.version }}
+          path: ${{ steps.linux-vsix.outputs.vsix_path }}
+
+      - name: Upload macOS VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: continue-vscode-unofficial-macos-${{ steps.version.outputs.version }}
+          path: ${{ steps.mac-vsix.outputs.vsix_path }}
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
@@ -124,7 +159,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           name: ${{ steps.version.outputs.release_name }}
           body: |
-            This is an automatically generated **unofficial** Continue VSIX build for Linux x64.
+            This is an automatically generated **unofficial** Continue VSIX build for Linux x64 and macOS x64.
 
             Version: v${{ steps.version.outputs.version }}
 
@@ -133,4 +168,6 @@ jobs:
           prerelease: true
           draft: false
           generate_release_notes: false
-          files: ${{ steps.vsix.outputs.vsix_path }}
+          files: |
+            ${{ steps.linux-vsix.outputs.vsix_path }}
+            ${{ steps.mac-vsix.outputs.vsix_path }}
