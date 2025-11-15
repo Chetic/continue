@@ -56,7 +56,14 @@ export function ToolCallDisplay({
   }
 
   function handleOpenRawData() {
-    dispatch(setDialogMessage(<RawApiDataDialog promptLog={promptLog} />));
+    dispatch(
+      setDialogMessage(
+        <RawApiDataDialog
+          promptLog={promptLog}
+          toolCallState={toolCallState}
+        />,
+      ),
+    );
     dispatch(setShowDialog(true));
   }
 
@@ -79,20 +86,18 @@ export function ToolCallDisplay({
             <ToolCallStatusMessage tool={tool} toolCallState={toolCallState} />
           </div>
           <div className="flex flex-row items-center gap-2">
-            {isErrored && (
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handleOpenRawData();
-                }}
-                className="text-xs font-medium text-[color:var(--vscode-textLink-foreground)] underline decoration-dotted underline-offset-2 hover:text-[color:var(--vscode-textLink-activeForeground)]"
-              >
-                {rawDataAvailable
-                  ? "View raw API data"
-                  : "View tool call details"}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleOpenRawData();
+              }}
+              className="text-xs font-medium text-[color:var(--vscode-textLink-foreground)] underline decoration-dotted underline-offset-2 hover:text-[color:var(--vscode-textLink-activeForeground)]"
+            >
+              {rawDataAvailable
+                ? "View raw API data"
+                : "View tool call details"}
+            </button>
             {!!toolCallState.output?.length && (
               <ToolTruncateHistoryIcon historyIndex={historyIndex} />
             )}

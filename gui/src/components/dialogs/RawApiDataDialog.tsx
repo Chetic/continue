@@ -1,4 +1,4 @@
-import { PromptLog } from "core";
+import { PromptLog, ToolCallState } from "core";
 import { useMemo } from "react";
 import { CopyIconButton } from "../gui/CopyIconButton";
 import useCopy from "../../hooks/useCopy";
@@ -6,6 +6,7 @@ import { extractRawApiDataFromPromptLog } from "../../util/rawApiData";
 
 interface RawApiDataDialogProps {
   promptLog?: PromptLog;
+  toolCallState?: ToolCallState;
 }
 
 function formatJson(value: unknown): string {
@@ -82,7 +83,7 @@ function Section({
           ) : null}
         </div>
       </div>
-      <pre className="no-scrollbar max-h-72 overflow-auto rounded border border-[color:var(--vscode-editorWidget-border)] bg-[color:var(--vscode-editorWidget-background)] p-3 text-xs leading-5 text-[color:var(--vscode-editor-foreground)]">
+      <pre className="no-scrollbar max-h-72 overflow-auto whitespace-pre-wrap break-words rounded border border-[color:var(--vscode-editorWidget-border)] bg-[color:var(--vscode-editorWidget-background)] p-3 text-xs leading-5 text-[color:var(--vscode-editor-foreground)]">
         {formatted}
       </pre>
     </div>
@@ -111,9 +112,10 @@ function CopyTextButton({
 
 export default function RawApiDataDialog({
   promptLog,
+  toolCallState,
 }: RawApiDataDialogProps): JSX.Element {
-  const { requestBody, responseBody, responseChunks } =
-    extractRawApiDataFromPromptLog(promptLog);
+  const { requestBody, responseBody, responseChunks, errorMessage } =
+    extractRawApiDataFromPromptLog(promptLog, toolCallState);
   const response =
     responseBody ??
     (responseChunks && responseChunks.length > 0 ? responseChunks : undefined);
@@ -139,6 +141,14 @@ export default function RawApiDataDialog({
           </div>
         )}
       </div>
+      {errorMessage ? (
+        <Section
+          title="Error details"
+          description="The provider reported the following error when executing this tool call."
+          value={errorMessage}
+          copyButtonLabel="Copy error"
+        />
+      ) : null}
       <Section
         title="Request Body"
         description="Complete JSON payload sent to the provider."
